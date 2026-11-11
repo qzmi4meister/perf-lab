@@ -137,8 +137,13 @@ if resource == "service":
     result = {"metadata": {"name": "api"}, "spec": {"selector": {} if scenario == "selectorless" else {"app": "api"}, "type": "ClusterIP", "ports": []}}
 elif resource == "endpointslices":
     result = {"items": [{"metadata": {"name": "api-slice"}, "endpoints": [{"conditions": {"ready": True}, "addresses": ["DO_NOT_STORE"]}]}]}
+    if scenario.startswith("empty_endpoints_"):
+        result["items"][0].pop("endpoints")
+        if scenario != "empty_endpoints_missing":
+            value = None if scenario == "empty_endpoints_null" else []
+            result["items"][0].update(endpoints=value, ports=value)
 elif resource == "pods":
-    result = {"items": [POD] * (2 if scenario == "too_many" else 1)}
+    result = {"items": [] if scenario.startswith("empty_endpoints_") else [POD] * (2 if scenario == "too_many" else 1)}
 elif resource == "events":
     result = {"items": [{"type": "Warning", "reason": "BackOff", "message": "DO_NOT_STORE", "involvedObject": {"uid": "uid-1", "name": "api-1"}}]}
 elif resource == "pods.metrics.k8s.io":
@@ -195,6 +200,25 @@ print(json.dumps(result))
         for metric in summary["metrics"].values():
             for path in metric["sources"]:
                 self.assertTrue((dest / path).is_file())
+
+    def test_empty_endpoints_are_preserved_without_a_health_verdict(self):
+        for representation in ("null", "empty", "missing"):
+            with self.subTest(representation=representation):
+                result, summary, commands, dest = self.collect("empty_endpoints_" + representation)
+                manifest = json.loads((dest / "manifest.json").read_text())
+                source = next(s for s in manifest["sources"] if s["artifact"] == "raw/endpointslices.json")
+                self.assertEqual(source["status"], "ok", source)
+                slices = json.loads((dest / "raw/endpointslices.json").read_text())
+                self.assertEqual(len(slices), 1)
+                self.assertEqual(slices[0]["metadata"]["name"], "api-slice")
+                self.assertEqual(slices[0]["endpoints"], [])
+                self.assertEqual(slices[0]["ports"], [])
+                self.assertEqual(summary["status"], "complete")
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(summary["facts"]["pods"], [])
+                self.assertFalse(summary["metrics"])
+                self.assertTrue(any("not a healthy-service verdict" in s for s in summary["limitations"]))
+                self.assertEqual([c[c.index("get") + 1] for c in commands], ["service", "endpointslices", "pods"])
 
     def test_missing_metrics_is_partial_not_zero(self):
         result, summary, _, dest = self.collect("missing_metrics")

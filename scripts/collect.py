@@ -292,10 +292,10 @@ def collect_kubernetes(args, bundle):
             return
         selector = ",".join(f"{k}={v}" for k, v in sorted(service["selector"].items()))
         query("endpointslices", ["get", "endpointslices", "-l", f"kubernetes.io/service-name={args.service}", "-o", "json"],
-            lambda o: [{"metadata": identity(s), "addressType": s.get("addressType"), "ports": s.get("ports", []),
+            lambda o: [{"metadata": identity(s), "addressType": s.get("addressType"), "ports": s.get("ports") or [],
                         "endpoints": [{"conditions": e.get("conditions", {}), "nodeName": e.get("nodeName"),
                                        "targetRef": pick(e.get("targetRef", {}), ("kind", "name", "namespace", "uid"))}
-                                      for e in s.get("endpoints", [])]} for s in items(o)])
+                                      for e in (s.get("endpoints") or [])]} for s in items(o)])
     scope = [args.pod] if args.pod else (["-l", selector] if selector else [])
 
     def pods_project(obj):
