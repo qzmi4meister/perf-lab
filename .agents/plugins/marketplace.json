@@ -1,0 +1,12 @@
+{
+  "name": "perf-lab-local",
+  "interface": {"displayName": "Perf Lab (local)"},
+  "plugins": [
+    {
+      "name": "perf-lab",
+      "source": {"source": "local", "path": "./"},
+      "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+      "category": "Developer Tools"
+    }
+  ]
+}

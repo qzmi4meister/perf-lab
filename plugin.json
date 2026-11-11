@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "perf-lab",
+  "version": "0.1.0",
+  "description": "Evidence-based diagnostics for running Linux servers and Kubernetes services.",
+  "repository": "https://github.com/qzmi4meister/perf-lab",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "Perf Lab",
+        "shortDescription": "Diagnose Linux and Kubernetes with measured evidence",
+        "longDescription": "Collect scoped performance evidence, analyze bottlenecks, and compare observations before and after a change. Runs locally with Python and optional kubectl.",
+        "category": "Developer Tools",
+        "capabilities": ["Read"]
+      }
+    }
+  }
+}

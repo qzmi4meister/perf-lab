@@ -1,0 +1,11 @@
+{
+  "name": "perf-lab",
+  "version": "0.1.0",
+  "description": "Evidence-based diagnostics for running Linux servers and Kubernetes services.",
+  "skills": "./skills/",
+  "requires_local_executor": true,
+  "interface": {
+    "displayName": "Perf Lab",
+    "shortDescription": "Diagnose Linux and Kubernetes with measured evidence"
+  }
+}

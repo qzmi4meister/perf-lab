@@ -1,0 +1,4 @@
+interface:
+  display_name: "Perf Analyze"
+  short_description: "Explain server bottlenecks with source evidence"
+  default_prompt: "Use $perf-analyze to diagnose this evidence bundle, distinguish observations from hypotheses, and identify the next useful measurement."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Perf Collect"
+  short_description: "Collect Linux and Kubernetes diagnostic evidence"
+  default_prompt: "Use $perf-collect to collect a scoped evidence bundle for the Linux server or Kubernetes service I identify."

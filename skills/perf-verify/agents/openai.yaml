@@ -1,0 +1,4 @@
+interface:
+  display_name: "Perf Verify"
+  short_description: "Check performance changes with comparable measurements"
+  default_prompt: "Use $perf-verify to compare these before/after observations and determine whether the evidence supports the intended improvement."
