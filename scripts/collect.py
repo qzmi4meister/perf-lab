@@ -12,6 +12,7 @@ import sys
 import time
 
 from common import Bundle, run, utc_now
+from perf_profile import record_perf, report_perf
 
 PROC_FILES = ("stat", "meminfo", "loadavg", "diskstats", "net/dev",
               "pressure/cpu", "pressure/memory", "pressure/io", "vmstat")
@@ -201,9 +202,18 @@ def collect_linux(args, bundle):
         facts["cgroup_limits_sources"] = "raw/cgroup-ancestors/"
         bundle.note("Leaf throttling counters do not prove absence of throttling at ancestors; review ancestor limits.")
     before = linux_snapshot(bundle, "before", args.pid, args.cgroup)
-    time.sleep(args.duration)
+    started = time.monotonic()
+    if args.perf:
+        process = process_stat(before.get("pid/stat"))
+        recording = record_perf(bundle, args.pid, args.duration, args.perf_call_graph,
+                                process["start_ticks"] if process else None)
+    # A missing/denied perf must not shorten the baseline observation interval.
+    time.sleep(max(0, args.duration - (time.monotonic() - started)))
     after = linux_snapshot(bundle, "after", args.pid, args.cgroup)
     summarize_linux(bundle, before, after)
+    if args.perf:
+        process = process_stat(after.get("pid/stat"))
+        report_perf(bundle, recording, process["start_ticks"] if process else None)
     facts["tools_available"] = {name: bool(shutil.which(name)) for name in ("perf", "iostat", "pidstat", "vmstat", "bpftrace")}
     bundle.note("Metrics describe the collector's visible procfs/network namespaces; a container view is not a full host view.")
     bundle.note("Two samples yield interval averages, not latency percentiles or proof of a bottleneck. Disk layers may double-count I/O.")
@@ -377,6 +387,9 @@ def main():
     linux.add_argument("--duration", type=positive, default=10, help="Seconds between snapshots (1–60)")
     linux.add_argument("--pid", type=positive)
     linux.add_argument("--cgroup", type=Path, help="Explicit cgroup v2 directory beneath /sys/fs/cgroup")
+    linux.add_argument("--perf", action="store_true", help="Also record a bounded user-space CPU profile; requires --pid")
+    linux.add_argument("--perf-call-graph", choices=("dwarf", "fp"),
+                       help="Stack recording with --perf: dwarf (default, captures stack bytes) or fp (requires frame pointers)")
     kube = sub.add_parser("kubernetes", help="Scoped read-only kubectl collection")
     kube.add_argument("--out", required=True)
     kube.add_argument("--context", required=True)
@@ -395,6 +408,11 @@ def main():
             parser.error("linux collection must run on the target Linux machine")
         if args.duration > 60:
             parser.error("duration must be at most 60 seconds")
+        if args.perf and not args.pid:
+            parser.error("--perf requires an explicit --pid; cgroup-only and host-wide profiling are not supported")
+        if args.perf_call_graph and not args.perf:
+            parser.error("--perf-call-graph requires --perf")
+        args.perf_call_graph = "fp" if args.perf_call_graph == "fp" else "dwarf,4096"
         if args.cgroup:
             args.cgroup = args.cgroup.resolve()
             root = Path("/sys/fs/cgroup").resolve()

@@ -24,15 +24,24 @@ def save_json(path, data):
     path.chmod(0o600)
 
 
-def run(argv, timeout=10, limit=MAX_BYTES):
+def run(argv, timeout=10, limit=MAX_BYTES, *, env=None, file_limit=None):
     """Bound both streams together; terminate the process group on timeout/overflow."""
+    def limit_files():
+        # Used only by Linux profiling. Set the limit in the child, not the collector.
+        import resource
+        _, hard = resource.getrlimit(resource.RLIMIT_FSIZE)
+        cap = file_limit if hard == resource.RLIM_INFINITY else min(file_limit, hard)
+        resource.setrlimit(resource.RLIMIT_FSIZE, (cap, cap))
+
     result = {"command": argv, "started_at": utc_now(), "status": "ok"}
     start = time.monotonic()
     chunks = {"stdout": bytearray(), "stderr": bytearray()}
     try:
         process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   start_new_session=True, env={**os.environ, "LC_ALL": "C"})
-    except OSError as exc:
+                                   start_new_session=True,
+                                   env={**os.environ, **(env or {}), "LC_ALL": "C"},
+                                   preexec_fn=limit_files if file_limit is not None else None)
+    except (OSError, subprocess.SubprocessError) as exc:
         return {**result, "status": "unavailable", "error": str(exc),
                 "stdout": "", "stderr": "", "elapsed_seconds": time.monotonic() - start}
     try:

@@ -27,8 +27,20 @@ Sources: [procfs](https://www.kernel.org/doc/html/latest/filesystems/proc.html),
 
 Sources: [resource metrics](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/), [resource management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/), [EndpointSlices](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/).
 
+## Optional perf CPU profiles
+
+- Start with `facts.perf.status` and the manifest. Only a `complete` profile has a successful recording, stable PID identity and a report with recognized sample rows. A bundle may contain useful baseline metrics alongside an unusable profile. Command JSON preserves diagnostics; check for lost samples and symbol/unwind warnings.
+- `cpu-clock:u` samples user-space on-CPU work. Kernel execution, sleeping, blocked I/O and remote request time are not covered. A low sample count or an empty profile does not establish low request latency or healthy behavior.
+- `raw/perf/report.txt` shows self overhead and sample counts by command, shared object and symbol, with caller chains. The denominator is the recorded event, not wall-clock request time. Caller-chain percentages overlap; do not sum them or turn a hot function's share into a promised speedup. The 0.5% chain threshold and 64-frame report depth hide some details.
+- The selected PID's threads and newly inherited child tasks may contribute samples. Already-running children and the rest of a cgroup are not automatically covered. Review process identity and command names before attributing work to an application component.
+- DWARF mode stores up to 4096 bytes of stack per sample; deeper stacks may be incomplete. Frame-pointer mode requires frame pointers in the relevant binaries. Unresolved symbols and runtime/interpreter frames are evidence gaps; do not invent application function names. JIT or interpreted runtimes may need runtime-specific symbol support or another profiler.
+- Binary profiles contain names, mapped paths and addresses; DWARF samples can contain sensitive application stack memory. The collection disables automatic symbol downloads and build-ID cache updates. Offline re-analysis may need matching binaries/debug information through an authorized channel; the saved text report remains available.
+- Compare profiles only with compatible event, stack mode, target, workload, sample quality and duration. `compare.py` compares baseline numeric metrics, not profiles. A smaller sample percentage can result from other work increasing; check CPU cost per unit of work and application outcomes separately.
+
+Sources: [perf record](https://man7.org/linux/man-pages/man1/perf-record.1.html), [perf report](https://man7.org/linux/man-pages/man1/perf-report.1.html), [perf access control](https://docs.kernel.org/admin-guide/perf-security.html).
+
 ## Further instrumentation
 
-Use existing reviewed tools before generating probes. Choose PID/cgroup and a short observation interval. Confirm supported events and privileges rather than changing `perf_event_paranoid` or other settings automatically. Preserve raw output, tool versions and the measured scope.
+Use existing reviewed tools before generating probes. The packaged collector supports a short user-space CPU profile through `linux --pid PID --perf`. Other perf events, hardware counters and scheduling/off-CPU analysis require a separate targeted collection. Confirm supported events and privileges rather than changing `perf_event_paranoid` or other settings automatically. Preserve raw output, tool versions and the measured scope.
 
 For Ftrace, inspect existing tracer state and do not disturb an active session. For eBPF, bound duration, attach points and stack volume; probe complexity and observer effects matter. Neither path is implemented by the baseline collector. No claim of less than 0.1% overhead is made without measurement.

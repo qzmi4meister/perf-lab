@@ -44,7 +44,30 @@ Linux collection covers CPU, available memory, swap activity, major faults, disk
 
 Kubernetes collection covers container states and resources, readiness, restarts, termination reasons, events for selected pods, and available CPU/memory metrics. Service collection also includes its selector and EndpointSlices. Node status is optional. Context and namespace must always be explicit; collecting all pods in a namespace requires `--all-pods`.
 
-The collector does not automatically elevate privileges, install packages, run `exec/debug`, change resources, restart workloads, or generate load. This version does not run perf/eBPF/Ftrace or connect to Prometheus. Missing metrics remain unknown. The Kubernetes Metrics API does not measure request latency or CPU throttling; those require additional sources.
+The collector does not automatically elevate privileges, install packages, run `exec/debug`, change resources, restart workloads, or generate load. Optional Linux CPU profiling uses an installed `perf`; eBPF, Ftrace and Prometheus are not integrated. Missing metrics remain unknown. The Kubernetes Metrics API does not measure request latency or CPU throttling; those require additional sources.
+
+## CPU profiles with perf
+
+Add `--perf` to a Linux process collection to find functions and caller chains consuming user-space CPU:
+
+```bash
+python3 scripts/collect.py linux --pid 1234 --perf \
+  --duration 10 --out /tmp/perf-profile-001
+```
+
+This runs `perf record` during the baseline observation, then `perf report` after the final procfs snapshot. It requests `cpu-clock:u` samples at 99 Hz, with DWARF call stacks capped at 4096 bytes per sample. Use `--perf-call-graph fp` when the application and relevant libraries preserve frame pointers. The selected process's threads and newly inherited child tasks are included; already-running child processes are not automatically attached. Host-wide and cgroup-only profiling are not supported.
+
+The bundle adds `raw/perf/perf.data`, `raw/perf/report.txt`, and JSON diagnostics for the perf version, recording and report commands. `facts.perf` in `summary.json` records profile status, settings, process identity and artifact paths. Reports contain self overhead, sample counts and caller chains; they retain unresolved symbols. `compare.py` continues to compare baseline numeric metrics, not function percentages.
+
+Recording has a hard 64 MiB file limit and a timeout of the requested duration plus 5 seconds. Report generation has a 15-second timeout; each command's stdout/stderr is limited to 2 MiB combined. Missing perf, denied access, exited/replaced processes and collection limits leave baseline evidence available and mark the bundle partial. Failed or identity-invalid recordings are not reported. Always inspect `facts.perf.status` and the manifest; a successful CLI exit can still contain a failed profile.
+
+Perf configuration files and debuginfod downloads are disabled for these commands, and recording does not update the build-ID cache. No permission settings are changed. Native symbols and usable unwind information are needed for attribution; interpreted/JIT runtimes may require additional runtime support. A CPU profile does not measure off-CPU waits or request latency, and a function's sample share is not its potential application speedup.
+
+**Profile privacy:** `perf.data` includes process names, mapped paths and addresses. DWARF profiles also contain user-stack memory, which may include credentials or application data. Profiles are kept in the private bundle; the baseline collector's field-exclusion guarantees do not apply to those stack bytes. Profiling overhead depends on the workload and stack mode.
+
+For a Kubernetes container, run this Linux mode through an already authorized execution path on its node or inside the container, with an explicitly verified PID in that environment. A pod name is not a Linux PID. The Kubernetes command does not run perf or create a debug container, and namespace/permission restrictions may prevent profiling.
+
+See the [perf record](https://man7.org/linux/man-pages/man1/perf-record.1.html), [perf report](https://man7.org/linux/man-pages/man1/perf-report.1.html) and [access-control](https://docs.kernel.org/admin-guide/perf-security.html) documentation.
 
 ## Connect to Codex
 
@@ -78,7 +101,7 @@ Example requests after installation:
 - "Analyze `/tmp/perf-service-001` and distinguish observations from hypotheses."
 - "Compare these two bundles after a CPU limit change and assess whether the evidence supports an improvement."
 
-Skills are regular directories under `skills/`, but they use shared plugin resources: keep the whole package together when moving it. For a remote Linux server, copy `scripts/collect.py` and `scripts/common.py`, run collection there, and transfer the evidence bundle through an already authorized channel for analysis.
+Skills are regular directories under `skills/`, but they use shared plugin resources: keep the whole package together when moving it. For a remote Linux server, copy the `scripts/` directory, run collection there, and transfer the evidence bundle through an already authorized channel for analysis.
 
 ## Development checks
 
@@ -87,9 +110,9 @@ python3 -m unittest discover -s tests -v
 python3 scripts/collect.py linux --duration 1 --out /tmp/perf-smoke-unique
 ```
 
-Tests cover units, deltas, process replacement, Kubernetes field filtering, access failures, command limits, and comparison. Kubernetes integration tests use a fake `kubectl`; they do not verify access to your cluster. [Behavioral acceptance cases for skills](tests/behavioral-cases.md) are evaluated separately from collector code. Passing unit tests does not establish AI diagnostic accuracy.
+Tests cover units, deltas, process replacement, Kubernetes field filtering, access failures, command limits, comparison, and the perf collection/report lifecycle. Perf tests use a fake executable to exercise success, denied access, missing tools, file/output limits, timeouts, empty samples and identity changes. Kubernetes integration tests use a fake `kubectl`; these tests do not verify actual profiling permissions or cluster access. [Behavioral acceptance cases for skills](tests/behavioral-cases.md) are evaluated separately from collector code. Passing unit tests does not establish AI diagnostic accuracy.
 
-Bundles exclude container environment variables and arguments, annotations, kubeconfig, secrets, and logs. Full Pod API responses may briefly reside in memory before fields are filtered. Bundle files are accessible only to their owner, but still contain internal names and resource information. Collection has some overhead; overhead below 0.1% is not guaranteed.
+Baseline bundles exclude container environment variables and arguments, annotations, kubeconfig, secrets, and logs. Optional DWARF profiles can contain sensitive stack memory as described above. Full Pod API responses may briefly reside in memory before fields are filtered. Bundle files are accessible only to their owner, but still contain internal names and resource information. Collection has some overhead; overhead below 0.1% is not guaranteed.
 
 ## Methodology and references
 

@@ -16,7 +16,7 @@ Use the user's requested change and success criterion. Existing authorization pe
    python3 "$PLUGIN_DIR/scripts/compare.py" /path/to/before /path/to/after
    ```
 
-   The result is deliberately `descriptive_only`. Review comparability issues, missing metrics, source artifacts and differing intervals. A lower CPU reading can simply mean lower throughput. Cumulative counters require stable identity and a known elapsed interval.
+   The result is deliberately `descriptive_only`. Review comparability issues, missing metrics, source artifacts and differing intervals. A lower CPU reading can simply mean lower throughput. Cumulative counters require stable identity and a known elapsed interval. Optional perf profiles are not compared by this script: inspect each `facts.perf` and report separately, checking event, stack mode, identity, lost samples and symbol quality. A lower function sample share is not proof of lower CPU cost or latency; also account for profiling overhead in the baseline measurements.
 5. Where an experiment is authorized and practical, repeat baseline and candidate observations under matched load; interleave runs when drift matters. Report sample count, spread and application-level outcome. Do not treat a single noisy pair as statistically established improvement. Don't construct latency percentiles from average CPU/memory samples.
 
 Return one of: **improvement supported**, **regression supported**, **no clear difference**, or **insufficient evidence**. Include the measured change with units, comparability conditions, correctness results and remaining uncertainty. Use "supported" only when the evidence meets the stated criterion. Stop after the requested proof; do not broaden into unrelated tuning.

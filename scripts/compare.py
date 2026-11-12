@@ -27,6 +27,10 @@ def compare(before, after):
     if before.get("status") == "incomplete" or after.get("status") == "incomplete":
         reasons.append("At least one collection is incomplete.")
     old, new = before.get("facts", {}), after.get("facts", {})
+    profile_keys = ("event", "frequency_hz", "call_graph", "scope", "version")
+    old_profile, new_profile = old.get("perf", {}), new.get("perf", {})
+    if bool(old_profile) != bool(new_profile) or any(old_profile.get(k) != new_profile.get(k) for k in profile_keys):
+        reasons.append("CPU profiling settings differ; observer overhead may affect baseline metrics.")
     for key in ("kernel", "machine", "visible_cpus", "boot_id", "process_start_ticks", "cgroup_inode"):
         if old.get(key) != new.get(key):
             reasons.append(f"Environment/identity changed: {key}.")
