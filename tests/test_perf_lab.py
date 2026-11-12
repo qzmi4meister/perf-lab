@@ -270,6 +270,15 @@ class ComparisonTests(unittest.TestCase):
         self.assertTrue(any("identities changed" in s for s in report["comparability_issues"]))
         self.assertTrue(any("Reused" in s for s in report["comparability_issues"]))
 
+    def test_profiling_changes_are_flagged_without_comparing_sample_shares(self):
+        a, b = self.sample(), self.sample()
+        b["facts"]["perf"] = {"event": "cpu-clock:u", "frequency_hz": 99, "call_graph": "fp"}
+        self.assertTrue(any("profiling settings differ" in s for s in compare(a, b)["comparability_issues"]))
+        a = copy.deepcopy(b)
+        self.assertFalse(compare(a, b)["comparability_issues"])
+        b["facts"]["perf"]["call_graph"] = "dwarf,4096"
+        self.assertTrue(any("profiling settings differ" in s for s in compare(a, b)["comparability_issues"]))
+
 
 if __name__ == "__main__":
     unittest.main()

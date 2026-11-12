@@ -21,6 +21,8 @@ Use a compact findings table when several findings are comparable:
 
 Also state material coverage gaps. For example, kernel frames not collected means kernel behavior is unassessed, not healthy. Missing Metrics API data is not zero usage. Cite actual files/fields; don't fabricate line references.
 
+When `facts.perf` is present, use the perf section in [interpretation.md](references/interpretation.md). Check profile status and command diagnostics before attributing work from `raw/perf/report.txt`; the existence of `perf.data` alone does not establish a usable profile. Cite functions with their self-sample share, caller context and event/scope. Missing symbols, lost samples and incomplete stacks reduce confidence. Hot functions identify CPU work; application context is still needed to explain why that work increased.
+
 If more evidence is necessary, select the smallest useful follow-up: repeat collection during the symptom; inspect a specific cgroup; collect a scoped CPU profile; or inspect an existing latency dashboard. The packaged `perf-collect` workflow provides baseline collection when requested. Ask and wait only when essential target information or authorization is missing; preserve authorization already provided.
 
 End once the available evidence supports an actionable diagnosis or a clearly identified measurement gap. Do not alter production configuration, generate probe scripts, create PRs, or install tools as an automatic consequence of diagnosis.
