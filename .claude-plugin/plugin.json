@@ -1,0 +1,6 @@
+{
+  "name": "perf-lab",
+  "version": "0.1.0",
+  "description": "Evidence-based diagnostics for running Linux servers and Kubernetes services.",
+  "repository": "https://github.com/qzmi4meister/perf-lab"
+}

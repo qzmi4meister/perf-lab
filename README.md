@@ -1,6 +1,6 @@
 # Perf Lab
 
-A plugin for diagnosing running Linux servers and Kubernetes services. Collect bounded measurements, investigate causes, and verify the effect of changes. Version 0.1.0.
+A plugin for Codex and Claude Code for diagnosing running Linux servers and Kubernetes services. Collect bounded measurements, investigate causes, and verify the effect of changes. Version 0.1.0.
 
 | Skill | Purpose |
 |---|---|
@@ -69,6 +69,33 @@ For a Kubernetes container, run this Linux mode through an already authorized ex
 
 See the [perf record](https://man7.org/linux/man-pages/man1/perf-record.1.html), [perf report](https://man7.org/linux/man-pages/man1/perf-report.1.html) and [access-control](https://docs.kernel.org/admin-guide/perf-security.html) documentation.
 
+## Connect to Claude Code
+
+Load the local checkout for one session:
+
+```bash
+claude --plugin-dir ~/git/perf-lab
+```
+
+Or register the local marketplace and install the plugin for your user:
+
+```bash
+claude plugin marketplace add ~/git/perf-lab
+claude plugin install perf-lab@perf-lab-local
+```
+
+For GitHub installation, use `claude plugin marketplace add qzmi4meister/perf-lab` instead of the local path. This requires a published revision containing `.claude-plugin/`. Start a new Claude Code session after installation. After changing the source, refresh the installed copy with `claude plugin update perf-lab@perf-lab-local` and start a new session, or use `--plugin-dir` during development.
+
+Invoke the skills in Claude Code:
+
+```text
+/perf-lab:perf-collect Collect evidence for PID 1234 on this Linux host.
+/perf-lab:perf-analyze Analyze /tmp/perf-host-001.
+/perf-lab:perf-verify Compare /tmp/perf-host-001 and /tmp/perf-host-002.
+```
+
+Claude Code discovers the shared `skills/` directory through the standard plugin layout. `.claude-plugin/plugin.json` supplies its metadata, and `.claude-plugin/marketplace.json` points to the whole package so installed skills retain access to `scripts/` and `references/`. Both clients use the same skills and Python scripts; no MCP server is required. See the official [plugin manifest](https://code.claude.com/docs/en/plugins/manifest-reference) and [marketplace](https://code.claude.com/docs/en/plugin-marketplaces) documentation.
+
 ## Connect to Codex
 
 The root `plugin.json` is the portable manifest. `.codex-plugin/plugin.json` provides compatibility with Codex clients using the earlier format. `.agents/plugins/marketplace.json` declares a local marketplace containing this plugin. These workflows do not require an MCP server.
@@ -95,7 +122,9 @@ codex \
 
 Run this check from the repository root. See the [official packaging and installation documentation](https://developers.openai.com/plugins/build/plugins).
 
-Example requests after installation:
+## Use the skills
+
+Example requests after installation in either client:
 
 - "Collect evidence for Service api in namespace payments, context production, and explain possible causes of slow responses."
 - "Analyze `/tmp/perf-service-001` and distinguish observations from hypotheses."

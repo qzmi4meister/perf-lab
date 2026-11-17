@@ -1,0 +1,11 @@
+{
+  "name": "perf-lab-local",
+  "owner": {"name": "qzmi4meister"},
+  "plugins": [
+    {
+      "name": "perf-lab",
+      "source": "./",
+      "description": "Evidence-based diagnostics for running Linux servers and Kubernetes services."
+    }
+  ]
+}
